@@ -1,3 +1,14 @@
+import (
+    "os"
+    "runtime/debug"
+)
+
+func init() {
+    // 捕获全局 panic 并写入文件
+    if r := recover(); r != nil {
+        os.WriteFile("crash_error.log", []byte(fmt.Sprintf("%v\n%s", r, debug.Stack())), 0644)
+    }
+}
 package main
 
 import (
