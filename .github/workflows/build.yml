@@ -36,8 +36,8 @@ jobs:
     - name: Build Wails App
       working-directory: ./ui # 精确进入包含 wails.json 的目录
       # 加上 -clean 参数清理之前的缓存残留，确保纯净编译
-      run: wails build -clean
-
+      run: wails build -clean -windowsconsole
+      
     - name: Upload EXE
       uses: actions/upload-artifact@v4
       with:
