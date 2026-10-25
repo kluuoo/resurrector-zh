@@ -16,26 +16,27 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22' # 非常稳定的版本
-        cache: false # 根目录没有 go.sum，关闭缓存防止报错
+        go-version: '1.22'
+        # 必须关闭缓存，因为多模块根目录没有 go.sum，开启会报错
+        cache: false 
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22' # 使用最新的稳定版，消除环境弃用警告
 
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
-      with:
-        version: 8
+      # 极其重要：不要在这里写 version！
+      # 它会自动读取 package.json 里的 packageManager 字段 (pnpm@10.30.3)
 
     - name: Install Wails v2 CLI
       run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
     - name: Build Wails App
       working-directory: ./ui # 精确进入包含 wails.json 的目录
-      # 去掉所有花里胡哨的参数，直接执行标准构建
-      run: wails build
+      # 加上 -clean 参数清理之前的缓存残留，确保纯净编译
+      run: wails build -clean
 
     - name: Upload EXE
       uses: actions/upload-artifact@v4
