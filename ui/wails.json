@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "ui",
+  "outputfilename": "ui",
+  "frontend:install": "pnpm install",
+  "frontend:build": "pnpm run build",
+  "frontend:dev:watcher": "pnpm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Daisuke (yet another) Maki",
+    "email": "maki.daisuke+gh@gmail.com"
+  },
+  "info": {
+    "companyName": "Daisuke (yet another) Maki",
+    "productName": "Resurrector",
+    "productVersion": "1.2.0",
+    "copyright": "Copyright (c) 2026 Daisuke (yet another) Maki",
+    "comments": "Resurrector Process Monitor UI"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "1.2.0",
+  "description": "Frontend for Resurrector process monitor, built with Svelte and Vite.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.4",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tsconfig/svelte": "^5.0.8",
+    "postcss": "^8.5.28",
+    "svelte": "^5.57.0",
+    "svelte-check": "^4.7.6",
+    "svelte-preprocess": "^6.0.5",
+    "tailwindcss": "^4.3.3",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21"
+  },
+  "dependencies": {
+    "ag-grid-community": "^36.1.0",
+    "tailwind-merge": "^3.7.0"
+  }
+}
