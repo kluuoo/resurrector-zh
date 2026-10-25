@@ -3,37 +3,124 @@ package main
 import (
 	"embed"
 	"fmt"
+	"log/slog"
 	"os"
-	"runtime/debug" // +++ 新增：用于捕获堆栈
-    
+
+	"resurrector/util"
+
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/options"
-    // ... 保留你原本所有的 import ...
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// wailsSlogLogger adapts Wails logger callbacks to slog.
+type wailsSlogLogger struct{}
+
+func (l *wailsSlogLogger) Print(message string) {
+	slog.Info(message,
+		slog.String("component", "wails"),
+	)
+}
+func (l *wailsSlogLogger) Trace(message string) {
+	slog.Debug(message,
+		slog.String("component", "wails"),
+		slog.String("wails_level", "trace"),
+	)
+}
+func (l *wailsSlogLogger) Debug(message string) {
+	slog.Debug(message,
+		slog.String("component", "wails"),
+		slog.String("wails_level", "debug"),
+	)
+}
+func (l *wailsSlogLogger) Info(message string) {
+	slog.Info(message,
+		slog.String("component", "wails"),
+		slog.String("wails_level", "info"),
+	)
+}
+func (l *wailsSlogLogger) Warning(message string) {
+	slog.Warn(message,
+		slog.String("component", "wails"),
+		slog.String("wails_level", "warning"),
+	)
+}
+func (l *wailsSlogLogger) Error(message string) {
+	slog.Error(message,
+		slog.String("component", "wails"),
+		slog.String("wails_level", "error"),
+	)
+}
+func (l *wailsSlogLogger) Fatal(message string) {
+	slog.Error(message,
+		slog.String("component", "wails"),
+		slog.String("wails_level", "fatal"),
+	)
+}
+
 func main() {
-	// +++ 新增：装甲启动，无论发生什么崩溃，都会写进 crash.log
-	defer func() {
-		if r := recover(); r != nil {
-			errMsg := fmt.Sprintf("致命崩溃: %v\n\n堆栈信息:\n%s", r, debug.Stack())
-			os.WriteFile("crash.log", []byte(errMsg), 0644)
+	runtimeFlags, err := util.ParseRuntimeFlags()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse runtime flags: %v\n", err)
+		os.Exit(1)
+	}
+	closeLogWriter, err := util.ConfigureLogger(runtimeFlags.LogFile, runtimeFlags.LogFormat)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to configure logger, falling back to stderr text: %v\n", err)
+		closeLogWriter, err = util.ConfigureLogger("", "text")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to configure fallback logger: %v\n", err)
+			os.Exit(1)
 		}
-	}()
+	}
+	if closeLogWriter != nil {
+		defer closeLogWriter()
+	}
 
-	// ---- 下面全部是原作者的原始代码，一个字都不要改！----
-	app := NewApp() 
-    
-    // (如果原作者是 app := NewApp(ctx)，那也原样保留)
+	slog.Info("starting Resurrector",
+		slog.String("component", "main"),
+		slog.String("binary", "ui"),
+		slog.String("version", Version),
+	)
 
-	err := wails.Run(&options.App{
-        // (保留原作者所有的选项，比如 Title, Width, OnStartup, Tray 等)
+	// Create an instance of the app structure
+	app := NewApp(runtimeFlags.ConfigPath)
+
+	// Create application with options
+	err = wails.Run(&options.App{
+		Title:  fmt.Sprintf("Resurrector v%s", Version),
+		Width:  950,
+		Height: 800,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		OnStartup:        app.startup,
+		OnDomReady:       app.domReady,
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+		},
+		Windows: &windows.Options{
+			WebviewIsTransparent: false,
+			WindowIsTranslucent:  false,
+		},
+		Bind: []interface{}{
+			app,
+		},
+		Logger:   &wailsSlogLogger{},
+		LogLevel: logger.WARNING,
 	})
 
 	if err != nil {
-		os.WriteFile("startup_error.log", []byte(err.Error()), 0644)
-		fmt.Println("启动失败:", err.Error())
+		slog.Error("wails run failed",
+			slog.String("component", "wails"),
+			slog.Any("error", err),
+		)
+		os.Exit(1)
 	}
 }
