@@ -16,25 +16,31 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
-        
+        go-version: '1.22' # 非常稳定的版本
+        cache: false # 根目录没有 go.sum，关闭缓存防止报错
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
 
-    - name: Install Wails3
-      run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 8
 
-    - name: Build
-      run: wails3 build
+    - name: Install Wails v2 CLI
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+    - name: Build Wails App
+      working-directory: ./ui # 精确进入包含 wails.json 的目录
+      # 去掉所有花里胡哨的参数，直接执行标准构建
+      run: wails build
 
     - name: Upload EXE
       uses: actions/upload-artifact@v4
       with:
         name: Resurrector-ZH-EXE
-        path: |
-          bin/*.exe
-          build/bin/*.exe
-          **/*.exe
+        # 标准的 Wails v2 产物路径
+        path: ui/build/bin/*.exe
         if-no-files-found: error
