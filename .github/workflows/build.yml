@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build and Release Resurrector ZH
 
 on:
   push:
@@ -16,32 +16,59 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
-        # 必须关闭缓存，因为多模块根目录没有 go.sum，开启会报错
+        go-version: '1.23' # 使用最新的稳定版，完美兼容原项目
         cache: false 
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '22' # 使用最新的稳定版，消除环境弃用警告
+        node-version: '22' # 消除弃用警告，保证环境纯净
 
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
-      # 极其重要：不要在这里写 version！
-      # 它会自动读取 package.json 里的 packageManager 字段 (pnpm@10.30.3)
+      with:
+        run_install: false # 让 wails 自动接管安装流程
 
     - name: Install Wails v2 CLI
       run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-    - name: Build Wails App
-      working-directory: ./ui # 精确进入包含 wails.json 的目录
-      # 加上 -clean 参数清理之前的缓存残留，确保纯净编译
+    # 1. 同步工作区依赖 (极其关键，解决 go.work 找不到模块的问题)
+    - name: Sync Go Workspace
+      run: go work sync
+
+    # 2. 编译核心程序 (resurrector.exe) - 隐藏黑框
+    - name: Build Core
+      # 在根目录执行，明确指定 core 模块和输出路径
+      run: go build -ldflags="-H windowsgui" -o core/resurrector.exe ./core
+
+    # 3. 编译 UI (wails build) - 隐藏黑框，不使用 -s -w 防止闪退
+    - name: Build UI
+      working-directory: ./ui
       run: wails build -clean -ldflags="-H windowsgui"
-      
-    - name: Upload EXE
+
+    # 4. 自动整理发布文件 (使用 PowerShell 确保路径绝对正确)
+    - name: Prepare Release Folder
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path Release
+        
+        # 复制核心文件
+        Copy-Item -Path "core\resurrector.exe" -Destination "Release\"
+        
+        # 智能寻找 Wails 产物并重命名
+        $uiExe = Get-ChildItem -Path "ui\build\bin\*.exe" | Select-Object -First 1
+        if ($uiExe) {
+            Copy-Item -Path $uiExe.FullName -Destination "Release\resurrector-ui.exe"
+            Write-Host "Successfully found and renamed UI exe: $($uiExe.Name) -> resurrector-ui.exe"
+        } else {
+            Write-Error "UI executable not found!"
+            exit 1
+        }
+
+    # 5. 打包上传
+    - name: Upload Final Package
       uses: actions/upload-artifact@v4
       with:
-        name: Resurrector-ZH-EXE
-        # 标准的 Wails v2 产物路径
-        path: ui/build/bin/*.exe
+        name: Resurrector-ZH-Release
+        path: Release/
         if-no-files-found: error
