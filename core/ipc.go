@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
-	"syscall"
+
 	"resurrector/util"
 )
 
@@ -43,7 +43,6 @@ func ShowUI(reconciler *Reconciler, runtimeFlags util.RuntimeFlags) error {
 	}
 	args = append(args, "-log-format", runtimeFlags.LogFormat)
 	cmd := exec.Command(uiExe, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return err
